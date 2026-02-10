@@ -26,6 +26,7 @@ setup(
                     '-O3', 
                     '--use_fast_math', 
                     '-arch=sm_80',
+                    '-arch=sm_86'
                     # 分离编译 (Relocatable Device Code)
                     # 如果算子多了，开启这个可以加速增量编译
                     # '--relocatable-device-code=true' 

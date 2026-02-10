@@ -25,7 +25,7 @@ def run_op_test(args):
         if args.op != "all" and op["name"] != args.op:
             continue
         print(f"🚀 Operator: {op['name']}")
-        print(f"{'Shape':<25} | {'Dtype':<12} | {'Mine(ms)':<10} | {'Torch(ms)':<10} | {'TFLOPS':<10} | {'GB/s':<10}")
+        print(f"{'Shape':<20} | {'Dtype':<10} | {'Mine(ms)':<10} | {'Torch(ms)':<10} | {'TFLOPS':<10} | {'GB/s':<10}")
         print("-" * 95)
         for shape in op["shapes"]:
             for dtype in op["dtypes"]:
@@ -35,7 +35,7 @@ def run_op_test(args):
                 if not args.bench_only:
                     my_res = op["my_func"](*inputs)
                     ref_res = op["torch_func"](*inputs)
-                    torch.testing.assert_close(my_res, ref_res, atol=1e-2, rtol=1e-2)
+                    torch.testing.assert_close(my_res, ref_res, atol=1e-5, rtol=1e-5)
                 # Benchmarking
                 t_my = benchmark_kernel(op["my_func"], inputs, args.repeats)
                 t_ref = benchmark_kernel(op["torch_func"], inputs, args.repeats)
