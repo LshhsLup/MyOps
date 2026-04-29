@@ -6,9 +6,7 @@
 void launchAddKernel(torch::Tensor out, torch::Tensor a, torch::Tensor b);
 
 // matmul
-void launchMatmulKernel(torch::Tensor C,
-                        torch::Tensor A,
-                        torch::Tensor B);
+void launchMatmulKernel(torch::Tensor C, torch::Tensor A, torch::Tensor B);
 
 // unary ops
 void launchAbsKernel(torch::Tensor out, torch::Tensor input);
