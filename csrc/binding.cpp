@@ -1,6 +1,6 @@
 #include "include/kernels.h"
 
-PYBIND11_MODULE(_backend, m) {
+PYBIND11_MODULE(_core, m) {
     m.def("add", [](torch::Tensor a, torch::Tensor b) {
         auto out = torch::empty_like(a);
         launchAddKernel(out, a, b);

@@ -17,19 +17,15 @@ setup(
     name="myops",
     ext_modules=[
         CUDAExtension(
-            name="myops._backend",
+            name="myops._core",
             sources=get_sources(),
             include_dirs=[os.path.abspath("csrc/include")],
             extra_compile_args={
                 'cxx': ['-O3', '-std=c++17'],
                 'nvcc': [
-                    '-O3', 
-                    '--use_fast_math', 
-                    '-arch=sm_80',
-                    '-arch=sm_86'
-                    # 分离编译 (Relocatable Device Code)
-                    # 如果算子多了，开启这个可以加速增量编译
-                    # '--relocatable-device-code=true' 
+                    '-O3',
+                    '--use_fast_math',
+                    '-arch=sm_80'
                 ]
             }
         )

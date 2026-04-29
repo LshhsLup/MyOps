@@ -1,188 +1,153 @@
 # MyOps
 
-A custom CUDA operator library for PyTorch that implements high-performance kernels with benchmarking capabilities against PyTorch's built-in operations. **This is a toy project, mainly for learning how to write a CUDA kernel and facilitating performance testing.**
+A custom CUDA/Triton operator library for PyTorch that implements high-performance kernels with unified benchmarking comparing Triton, CUDA, and PyTorch implementations.
 
 ## Features
 
-- **Custom CUDA Kernels**: Optimized implementations for common operations
-- **Easy Registration Pattern**: Simple operator registry system for adding new kernels
-- **Performance Benchmarking**: Built-in benchmarking with TFLOPS and bandwidth metrics
-- **Accuracy Validation**: Automatic verification against PyTorch reference implementations
-- **Multi-Dtype Support**: Supports float32, float16, and bfloat16 (depending on operator)
+- **Custom CUDA Kernels**: Hand-written CUDA kernels for common operations
+- **Custom Triton Kernels**: Triton implementations for comparison
+- **Unified Benchmark**: Side-by-side comparison of Triton vs CUDA vs PyTorch
+- **Easy Registration Pattern**: Simple operator registry for adding new kernels
+- **Accuracy Validation**: Automatic verification against PyTorch reference
 
 ## Requirements
 
 - CUDA Toolkit (targeting sm_80 architecture)
 - PyTorch with CUDA support
-- Python 3.7+
+- Python 3.8+
+- Triton
 - Ninja build system
 
 ## Installation
 
-### Build the C++/CUDA Extension
-
 ```bash
-# Build the extension in-place
+# Build the CUDA extension in-place
 python setup.py build_ext --inplace
-```
 
-The extension will be compiled with the following optimizations:
-- `-O3` optimization level
-- `--use_fast_math` for faster math operations
-- `-arch=sm_80` for NVIDIA Ampere architecture
-
-### Install as Python Package
-
-```bash
+# Or install as a package
 pip install -e .
-```
-
-## Usage
-
-### Basic Usage
-
-```python
-import torch
-import myops
-
-# Element-wise addition
-a = torch.randn(1000, device='cuda')
-b = torch.randn(1000, device='cuda')
-c = myops.add(a, b)  # Equivalent to torch.add(a, b)
-
-# Matrix multiplication
-a = torch.randn(1024, 512, device='cuda')
-b = torch.randn(512, 1024, device='cuda')
-c = myops.matmul(a, b)  # Shape: [1024, 1024]
-```
-
-### Running Benchmarks
-
-The project includes a comprehensive benchmarking script that compares custom kernels against PyTorch implementations:
-
-```bash
-# Run all operator benchmarks
-python run.py
-
-# Bench specific operator
-python run.py --op VectorAdd
-
-# Benchmark only (skip accuracy checks)
-python run.py --bench_only
-
-# Adjust number of benchmark repeats
-python run.py --repeats 100
-```
-
-### Benchmark Output
-
-The benchmark displays:
-- **Mine(ms)**: Average execution time of custom kernel
-- **Torch(ms)**: Average execution time of PyTorch reference
-- **TFLOPS**: Computational throughput
-- **GB/s**: Memory bandwidth utilization (normalized to 1555 GB/s theoretical peak)
-
-```
-===================================================================================
-                          CUDA OPERATOR PERFORMANCE DASHBOARD
-===================================================================================
-🚀 Operator: VectorAdd
-Shape                     | Dtype        | Mine(ms)    | Torch(ms)   | TFLOPS    | GB/s
------------------------------------------------------------------------------------------------
-(1000,)                   | float32      | 0.0023      | 0.0025      | 0.43      | 0.52
-```
-
-## Adding New Operators
-
-### 1. Write the CUDA Kernel
-
-Create a new file in `csrc/kernels/` (e.g., `myop.cu`) with your kernel implementation:
-```cpp
-template<typename T>
-__global__ void myOpKernel(T* out, const T* a, const T* b, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        out[idx] = a[idx] * b[idx];  // Example: element-wise multiplication
-    }
-}
-
-template<typename T>
-void launchMyOpKernel(torch::Tensor out, const torch::Tensor& a, const torch::Tensor& b) {
-    int n = a.numel();
-    dim3 block(256);
-    dim3 grid((n + block.x - 1) / block.x);
-    myOpKernel<T><<<grid, block>>>(out.data_ptr<T>(), a.data_ptr<T>(), b.data_ptr<T>(), n);
-}
-```
-
-### 2. Add Python Bindings
-
-Add bindings in [csrc/binding.cpp](csrc/binding.cpp):
-```cpp
-m.def("myop", [](torch::Tensor a, torch::Tensor b) {
-    auto out = torch::empty_like(a);
-    DISPATCH_FLOATING_TYPES(a.scalar_type(), "myop", [&] {
-        launchMyOpKernel<scalar_t>(out, a, b);
-    });
-    return out;
-}, "Element-wise multiplication");
-```
-
-### 3. Register Operator
-
-Add to [myops/registry.py](myops/registry.py):
-```python
-OPERATOR_REGISTRY.append({
-    "name": "MyOp",
-    "dtypes": [torch.float32, torch.float16],
-    "shapes": [(10**i,) for i in range(3, 10)],
-    "my_func": lambda a, b: myops.myop(a, b),
-    "torch_func": torch.mul,
-    "data_gen": gen_data_elementwise,
-    "get_flops": lambda shape: shape[0],
-    "get_bytes": lambda shape, dtype_size: shape[0] * 3 * dtype_size
-})
-```
-
-### 4. Rebuild and Test
-```bash
-python setup.py build_ext --inplace
-python run.py --op MyOp
 ```
 
 ## Project Structure
 
 ```
-MyOps/
-├── csrc/
-│   ├── binding.cpp          # Pybind11 bindings
-│   ├── include/
-│   │   └── kernels.h        # Kernel declarations & dispatch macros
-│   └── kernels/
-│       ├── add.cu           # Element-wise addition kernel
-│       └── matmul.cu        # Matrix multiplication kernel
-├── myops/
-│   ├── __init__.py          # Module initialization with attribute forwarding
-│   └── registry.py          # Operator registry for benchmarks
-├── setup.py                 # Build configuration for CUDA extension
-├── run.py                   # Benchmarking script
-└── README.md                # This file
+myops/
+├── __init__.py          # Module init, attribute forwarding to _core
+├── registry.py          # Operator registry for unified benchmarking
+├── cuda/                # CUDA kernel wrappers
+│   └── __init__.py
+└── triton/              # Triton kernel implementations
+    └── __init__.py
+csrc/
+├── binding.cpp          # PyBind11 bindings for CUDA kernels
+├── include/
+│   └── kernels.h
+└── kernels/             # CUDA kernel source
+    ├── add.cu
+    └── matmul.cu
+run.py                   # Unified benchmarking script
 ```
+
+## Usage
+
+### Writing a New Kernel
+
+**1. CUDA Kernel** (`csrc/kernels/your_kernel.cu`):
+```cpp
+// Implement your kernel
+template<typename T>
+__global__ void yourKernel(T* out, const T* a, const T* b, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        out[idx] = a[idx] + b[idx];
+    }
+}
+```
+
+**2. Bindings** (`csrc/binding.cpp`):
+```cpp
+m.def("your_kernel", [](torch::Tensor a, torch::Tensor b) {
+    auto out = torch::empty_like(a);
+    launchYourKernel(out, a, b);
+    return out;
+}, "Your kernel description");
+```
+
+**3. Triton Kernel** (`myops/triton/your_kernel.py`):
+```python
+import triton
+import triton.language as tl
+
+@triton.jit
+def your_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(0)
+    offset = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
+    mask = offset < n_elements
+    # ... kernel implementation
+```
+
+**4. Register** (`myops/registry.py`):
+```python
+{
+    "name": "YourOp",
+    "dtypes": [torch.float32, torch.float16],
+    "shapes": [(10**i,) for i in range(3, 8)],
+    "cuda_func": lambda a, b: myops.cuda.your_kernel(a, b),
+    "triton_func": lambda a, b: myops.triton.your_kernel(a, b),
+    "torch_func": torch.add,
+    "gen_data": gen_data_elementwise,
+    "get_flops": lambda shape: shape[0],
+    "get_bytes": lambda shape, dtype_size: shape[0] * 3 * dtype_size,
+}
+```
+
+### Running Benchmarks
+
+```bash
+# Benchmark all operators
+python run.py
+
+# Benchmark specific operator
+python run.py --op VectorAdd
+
+# Benchmark only (skip accuracy checks)
+python run.py --bench_only
+
+# Adjust number of repeats
+python run.py --repeats 100
+```
+
+### Benchmark Output
+
+```
+==============================================================================================================
+                                         KERNEL PERFORMANCE BENCHMARK
+==============================================================================================================
+Shape                | Dtype      | Triton(ms)   | CUDA(ms)     | Torch(ms)    | Triton Spd | CUDA Spd
+--------------------------------------------------------------------------------------------------------------
+
+VectorAdd
+(1000,)              | float32    | 0.0381       | 0.0106       | 0.0111       | 0.29      x | 1.04      x
+(10000,)             | float32    | 0.0356       | 0.0123       | 0.0113       | 0.32      x | 0.92      x
+...
+```
+
+Columns:
+- **Triton(ms)**: Triton kernel execution time
+- **CUDA(ms)**: Custom CUDA kernel execution time
+- **Torch(ms)**: PyTorch reference implementation time
+- **Triton Spd**: Triton speedup vs PyTorch
+- **CUDA Spd**: CUDA kernel speedup vs PyTorch
 
 ## Implemented Operators
 
 | Operator | Description | Supported Data Types |
 |----------|-------------|---------------------|
-| `add`    | Element-wise vector addition | float32, float16, bfloat16 |
-| `matmul` | Matrix multiplication (M×K @ K×N) | float32 |
+| `VectorAdd` | Element-wise vector addition | float32, float16, bfloat16 |
 
 ## Architecture Notes
 
-- **Target GPU**: NVIDIA Ampere (sm_80 architecture)
-- **Thread Block Size**: 256 threads per block (default)
-- **Compile Optimization**: `-O3` with fast math enabled
-- **Incremental Build**: Relocatable device code can be enabled in [setup.py](setup.py:30) for faster compilation with multiple operators
-
-## License
-
-This project is provided as-is for educational and research purposes.
+- **Target GPU**: NVIDIA Ampere (sm_80)
+- **Thread Block Size**: 256 threads (CUDA)
+- **Triton Block Size**: 1024 elements
+- **Compile Optimization**: `-O3` with `--use_fast_math`
