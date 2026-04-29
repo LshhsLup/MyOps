@@ -141,9 +141,22 @@ Columns:
 
 ## Implemented Operators
 
+### Binary Operators
+
 | Operator | Description | Supported Data Types |
 |----------|-------------|---------------------|
 | `VectorAdd` | Element-wise vector addition | float32, float16, bfloat16 |
+
+### Unary Operators (Template-based)
+
+| Operator | Description | Supported Data Types |
+|----------|-------------|---------------------|
+| `UnaryAbs` | Absolute value | float32, float16, bfloat16 |
+| `UnaryNeg` | Numerical negative | float32, float16, bfloat16 |
+| `UnaryExp` | Exponential | float32 |
+| `UnaryLog` | Natural logarithm | float32 |
+| `UnaryRelu` | ReLU activation | float32, float16, bfloat16 |
+| `UnarySigmoid` | Sigmoid activation | float32 |
 
 ## Architecture Notes
 
