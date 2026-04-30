@@ -1,105 +1,72 @@
 # MyOps
 
-A custom CUDA/Triton operator library for PyTorch that implements high-performance kernels with unified benchmarking comparing Triton, CUDA, and PyTorch implementations.
+> ⚠️ **For Learning & Practice Only** - This is a personal project for studying CUDA/Triton kernel development.
+
+A high-performance CUDA/Triton operator library for PyTorch with unified benchmarking framework.
 
 ## Features
 
-- **Custom CUDA Kernels**: Hand-written CUDA kernels for common operations
-- **Custom Triton Kernels**: Triton implementations for comparison
-- **Unified Benchmark**: Side-by-side comparison of Triton vs CUDA vs PyTorch
-- **Easy Registration Pattern**: Simple operator registry for adding new kernels
-- **Accuracy Validation**: Automatic verification against PyTorch reference
+- **Dual Kernel Implementation**: Both CUDA and Triton implementations for each operator
+- **Unified Benchmarking**: Side-by-side comparison with PyTorch reference using Rich framework
+- **Color-coded Results**: Green for speedup, red for slowdown vs PyTorch
+- **Automatic Verification**: correctness validation against PyTorch reference
+- **Template-based Design**: Reusable CUDA kernel templates for unary operators
+- **PyTorch Integration**: Seamless access via `torch.ops.myops`
 
 ## Requirements
 
-- CUDA Toolkit (targeting sm_80 architecture)
+- CUDA Toolkit (sm_80 architecture)
 - PyTorch with CUDA support
 - Python 3.8+
 - Triton
-- Ninja build system
+- Rich (for benchmark output)
 
 ## Installation
 
 ```bash
-# Build the CUDA extension in-place
-python setup.py build_ext --inplace
-
-# Or install as a package
 pip install -e .
 ```
+
+Or
+
+```bash
+python setup.py build_ext --inplace
+```
+
 
 ## Project Structure
 
 ```
 myops/
-├── __init__.py          # Module init, attribute forwarding to _core
-├── registry.py          # Operator registry for unified benchmarking
-├── cuda/                # CUDA kernel wrappers
+├── __init__.py           # Module init, exports ops
+├── ops.py                # Python API (add, matmul, abs, neg, exp, log, relu, sigmoid)
+├── registry.py           # Operator registry and benchmark config
+├── cuda/                 # CUDA kernel wrappers
 │   └── __init__.py
-└── triton/              # Triton kernel implementations
+└── triton/               # Triton kernel implementations
     └── __init__.py
+
 csrc/
-├── binding.cpp          # PyBind11 bindings for CUDA kernels
-├── include/
-│   └── kernels.h
-└── kernels/             # CUDA kernel source
-    ├── add.cu
-    └── matmul.cu
-run.py                   # Unified benchmarking script
+├── include/              # C++ headers
+│   ├── kernels.h         # CUDA kernel declarations
+│   └── common.h          # Common types and macros
+├── kernels/              # CUDA kernel source
+│   ├── add.cu            # Element-wise addition
+│   ├── matmul.cu         # Matrix multiplication
+│   └── unary.cu          # Unary ops (abs, neg, exp, log, relu, sigmoid)
+└── torch_api/            # PyTorch C++ extension adapter
+    ├── torch_api.h       # PyTorch tensor utilities
+    ├── utils.h           # Helper functions
+    ├── add.cpp           # add operator binding
+    ├── matmul.cpp        # matmul operator binding
+    ├── unary.cpp         # unary operators binding
+    └── register.cpp      # Operator registration
+
+run.py                    # Benchmark script
+setup.py                  # Build configuration
 ```
 
 ## Usage
-
-### Writing a New Kernel
-
-**1. CUDA Kernel** (`csrc/kernels/your_kernel.cu`):
-```cpp
-// Implement your kernel
-template<typename T>
-__global__ void yourKernel(T* out, const T* a, const T* b, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        out[idx] = a[idx] + b[idx];
-    }
-}
-```
-
-**2. Bindings** (`csrc/binding.cpp`):
-```cpp
-m.def("your_kernel", [](torch::Tensor a, torch::Tensor b) {
-    auto out = torch::empty_like(a);
-    launchYourKernel(out, a, b);
-    return out;
-}, "Your kernel description");
-```
-
-**3. Triton Kernel** (`myops/triton/your_kernel.py`):
-```python
-import triton
-import triton.language as tl
-
-@triton.jit
-def your_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
-    pid = tl.program_id(0)
-    offset = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
-    mask = offset < n_elements
-    # ... kernel implementation
-```
-
-**4. Register** (`myops/registry.py`):
-```python
-{
-    "name": "YourOp",
-    "dtypes": [torch.float32, torch.float16],
-    "shapes": [(10**i,) for i in range(3, 8)],
-    "cuda_func": lambda a, b: myops.cuda.your_kernel(a, b),
-    "triton_func": lambda a, b: myops.triton.your_kernel(a, b),
-    "torch_func": torch.add,
-    "gen_data": gen_data_elementwise,
-    "get_flops": lambda shape: shape[0],
-    "get_bytes": lambda shape, dtype_size: shape[0] * 3 * dtype_size,
-}
-```
 
 ### Running Benchmarks
 
@@ -108,7 +75,7 @@ def your_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 python run.py
 
 # Benchmark specific operator
-python run.py --op VectorAdd
+python run.py --op add
 
 # Benchmark only (skip accuracy checks)
 python run.py --bench_only
@@ -117,50 +84,129 @@ python run.py --bench_only
 python run.py --repeats 100
 ```
 
+### Python API
+
+```python
+import myops
+
+# Binary operator
+c = myops.add(a, b)
+
+# Unary operators
+y = myops.abs(x)
+y = myops.neg(x)
+y = myops.exp(x)
+y = myops.log(x)
+y = myops.relu(x)
+y = myops.sigmoid(x)
+
+# Matrix multiplication
+c = myops.matmul(a, b)
+```
+
 ### Benchmark Output
 
 ```
-==============================================================================================================
-                                         KERNEL PERFORMANCE BENCHMARK
-==============================================================================================================
-Shape                | Dtype      | Triton(ms)   | CUDA(ms)     | Torch(ms)    | Triton Spd | CUDA Spd
---------------------------------------------------------------------------------------------------------------
-
-VectorAdd
-(1000,)              | float32    | 0.0381       | 0.0106       | 0.0111       | 0.29      x | 1.04      x
-(10000,)             | float32    | 0.0356       | 0.0123       | 0.0113       | 0.32      x | 0.92      x
+╭────────────────────────────────────────────────────────────── ADD ───────────────────────────────────────────────────────────────╮
+│      Shape         Dtype           Triton               CUDA            Torch (ref)       Triton vs Torch       CUDA vs Torch    │
+│     (1000,)       float32       0.038912 ms         0.012800 ms         0.009216 ms            ↓0.24x              ↓0.72x        │
+│     (1000,)       float16       0.036659 ms         0.012595 ms         0.009114 ms            ↓0.25x              ↓0.72x        │
+│     (1000,)       bfloat16      0.035942 ms         0.012390 ms         0.008806 ms            ↓0.25x              ↓0.71x        │
+│    (10000,)       float32       0.035430 ms         0.012493 ms         0.008909 ms            ↓0.25x              ↓0.71x        │
+│    (10000,)       float16       0.035328 ms         0.012493 ms         0.009011 ms            ↓0.26x              ↓0.72x        │
+│    (10000,)       bfloat16      0.036250 ms         0.012390 ms         0.008704 ms            ↓0.24x              ↓0.70x        │
+│    (100000,)      float32       0.034816 ms         0.012390 ms         0.008806 ms            ↓0.25x              ↓0.71x        │
+│    (100000,)      float16       0.034918 ms         0.012595 ms         0.008806 ms            ↓0.25x              ↓0.70x        │
+│    (100000,)      bfloat16      0.034304 ms         0.012186 ms         0.008704 ms            ↓0.25x              ↓0.71x        │
+│   (1000000,)      float32       0.034406 ms         0.012800 ms         0.010035 ms            ↓0.29x              ↓0.78x        │
+│   (1000000,)      float16       0.034918 ms         0.013722 ms         0.008909 ms            ↓0.26x              ↓0.65x        │
+│   (1000000,)      bfloat16      0.035226 ms         0.012493 ms         0.008602 ms            ↓0.24x              ↓0.69x        │
+│   (10000000,)     float32       0.096461 ms         0.095437 ms         0.093082 ms            ↓0.96x              ↓0.98x        │
+│   (10000000,)     float16       0.053453 ms         0.051814 ms         0.050688 ms            ↓0.95x              ↓0.98x        │
+│   (10000000,)     bfloat16      0.053146 ms         0.051507 ms         0.050790 ms            ↓0.96x              ↓0.99x        │
+│  (100000000,)     float32       0.863130 ms         0.879718 ms         0.860160 ms            ↓1.00x              ↓0.98x        │
+│  (100000000,)     float16       0.439706 ms         0.446054 ms         0.437862 ms            ↓1.00x              ↓0.98x        │
+│  (100000000,)     bfloat16      0.441139 ms         0.444416 ms         0.437453 ms            ↓0.99x              ↓0.98x        │
+│  (1000000000,)    float32       8.754585 ms         8.698880 ms         8.752845 ms            ↓1.00x              ↑1.01x        │
+│  (1000000000,)    float16       4.415898 ms         4.390912 ms         4.406681 ms            ↓1.00x              ↑1.00x        │
+│  (1000000000,)    bfloat16      4.420096 ms         4.361626 ms         4.400947 ms            ↓1.00x              ↑1.01x        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ...
-```
 
 Columns:
-- **Triton(ms)**: Triton kernel execution time
-- **CUDA(ms)**: Custom CUDA kernel execution time
-- **Torch(ms)**: PyTorch reference implementation time
-- **Triton Spd**: Triton speedup vs PyTorch
-- **CUDA Spd**: CUDA kernel speedup vs PyTorch
+- **Triton/CUDA/Torch**: Kernel execution time
+- **Speedup**: Ratio vs PyTorch (green=up, red=down)
+```
 
 ## Implemented Operators
 
 ### Binary Operators
 
-| Operator | Description | Supported Data Types |
-|----------|-------------|---------------------|
-| `VectorAdd` | Element-wise vector addition | float32, float16, bfloat16 |
+| Operator | Description | Dtypes |
+|----------|-------------|--------|
+| `add` | Element-wise addition | float32, float16, bfloat16 |
+| `matmul` | Matrix multiplication | float32, float16, bfloat16 |
 
-### Unary Operators (Template-based)
+### Unary Operators
 
-| Operator | Description | Supported Data Types |
-|----------|-------------|---------------------|
-| `UnaryAbs` | Absolute value | float32, float16, bfloat16 |
-| `UnaryNeg` | Numerical negative | float32, float16, bfloat16 |
-| `UnaryExp` | Exponential | float32 |
-| `UnaryLog` | Natural logarithm | float32 |
-| `UnaryRelu` | ReLU activation | float32, float16, bfloat16 |
-| `UnarySigmoid` | Sigmoid activation | float32 |
+| Operator | Description | Dtypes |
+|----------|-------------|--------|
+| `abs` | Absolute value | float32, float16, bfloat16 |
+| `neg` | Numerical negative | float32, float16, bfloat16 |
+| `exp` | Exponential | float32 |
+| `log` | Natural logarithm | float32 |
+| `relu` | ReLU activation | float32, float16, bfloat16 |
+| `sigmoid` | Sigmoid activation | float32 |
+
+## Adding a New Operator
+
+**1. CUDA Kernel** (`csrc/kernels/your_op.cu`):
+```cpp
+template <typename scalar_t>
+__global__ void yourKernel(scalar_t* out, const scalar_t* input, size_t n) {
+    // implementation
+}
+
+template <typename scalar_t>
+cudaError_t launchYourKernel(scalar_t* out, const scalar_t* input, size_t n, cudaStream_t stream) {
+    yourKernel<<<blocks, threadsPerBlock, 0, stream>>>(out, input, n);
+    return cudaGetLastError();
+}
+```
+
+**2. Torch Binding** (`csrc/torch_api/your_op.cpp`):
+```cpp
+torch::Tensor your_op(torch::Tensor input) {
+    auto out = torch::empty_like(input);
+    DISPATCH_DTYPE_AND_LAUNCH(input.scalar_type(), input.numel(), your_kernel, out, input);
+    return out;
+}
+```
+
+**3. Triton Kernel** (`myops/triton/your_op.py`):
+```python
+@triton.jit
+def your_kernel(input_ptr, output_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
+    # implementation
+```
+
+**4. Register** (`myops/registry.py`):
+```python
+OPERATOR_REGISTRY.append({
+    "name": "your_op",
+    "dtypes": [torch.float32, torch.float16],
+    "shapes": [(10**i,) for i in range(3, 8)],
+    "cuda_func": lambda x: myops.cuda.your_op(x),
+    "triton_func": lambda x: myops.triton.your_op(x),
+    "torch_func": torch.your_func,
+    "gen_data": gen_data_unary,
+})
+```
 
 ## Architecture Notes
 
 - **Target GPU**: NVIDIA Ampere (sm_80)
-- **Thread Block Size**: 256 threads (CUDA)
+- **CUDA Thread Block**: 256 threads
 - **Triton Block Size**: 1024 elements
-- **Compile Optimization**: `-O3` with `--use_fast_math`
+- **CUDA Compile**: `-O3 --use_fast_math -arch=sm_80`
+- **C++ Standard**: C++17

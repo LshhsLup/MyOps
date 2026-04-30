@@ -2,6 +2,8 @@ import torch
 import triton
 import triton.language as tl
 
+__all__ = ["add"]
+
 
 @triton.jit
 def add_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
@@ -15,7 +17,9 @@ def add_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
     tl.store(c_ptr + offset, c_val, mask=mask)
 
 
-def add(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor | None = None) -> torch.Tensor:
+def add(
+    a: torch.Tensor, b: torch.Tensor, c: torch.Tensor | None = None
+) -> torch.Tensor:
     assert a.shape == b.shape, "Input tensors must have the same shape"
     assert a.dtype == b.dtype, "Input tensors must have the same dtype"
 
@@ -25,7 +29,7 @@ def add(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor | None = None) -> torc
     n_elements = a.numel()
 
     BLOCK_SIZE = 1024
-    grid = lambda meta: (triton.cdiv(n_elements, meta['BLOCK_SIZE']),)
+    grid = lambda meta: (triton.cdiv(n_elements, meta["BLOCK_SIZE"]),)
 
     add_kernel[grid](a, b, c, n_elements, BLOCK_SIZE=BLOCK_SIZE)
 

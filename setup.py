@@ -6,7 +6,12 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 os.environ["MAX_JOBS"] = str(os.cpu_count())
 
 def get_sources():
-    sources = ["csrc/binding.cpp"]
+    sources = []
+    # torch_api adapter layer
+    for file in os.listdir("csrc/torch_api"):
+        if file.endswith(".cpp"):
+            sources.append(os.path.join("csrc/torch_api", file))
+    # CUDA kernels
     for root, _, files in os.walk("csrc/kernels"):
         for file in files:
             if file.endswith(".cu") or file.endswith(".cpp"):
@@ -15,11 +20,15 @@ def get_sources():
 
 setup(
     name="myops",
+    packages=["myops"],
     ext_modules=[
         CUDAExtension(
             name="myops._core",
             sources=get_sources(),
-            include_dirs=[os.path.abspath("csrc/include")],
+            include_dirs=[
+                os.path.abspath("csrc"),
+                os.path.abspath("csrc/torch_api"),
+            ],
             extra_compile_args={
                 'cxx': ['-O3', '-std=c++17'],
                 'nvcc': [

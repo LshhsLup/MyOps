@@ -1,17 +1,36 @@
 #pragma once
 
-#include <torch/extension.h>
+#include "common.h"
 
 // add
-void launchAddKernel(torch::Tensor out, torch::Tensor a, torch::Tensor b);
+cudaError_t launchAddKernel(void *out,
+                            const void *a,
+                            const void *b,
+                            size_t n,
+                            cudaStream_t stream,
+                            MyOpsDtype dtype);
 
 // matmul
-void launchMatmulKernel(torch::Tensor C, torch::Tensor A, torch::Tensor B);
+cudaError_t launchMatmulKernel(void *c,
+                               const void *a,
+                               const void *b,
+                               int m,
+                               int n,
+                               int k,
+                               cudaStream_t stream,
+                               MyOpsDtype dtype);
 
-// unary ops
-void launchAbsKernel(torch::Tensor out, torch::Tensor input);
-void launchNegKernel(torch::Tensor out, torch::Tensor input);
-void launchExpKernel(torch::Tensor out, torch::Tensor input);
-void launchLogKernel(torch::Tensor out, torch::Tensor input);
-void launchReluKernel(torch::Tensor out, torch::Tensor input);
-void launchSigmoidKernel(torch::Tensor out, torch::Tensor input);
+// unary ops - name(lower), Name(upper)
+#define FOR_EACH_UNARY_OP(_) \
+  _(abs, Abs)                \
+  _(neg, Neg)                \
+  _(exp, Exp)                \
+  _(log, Log)                \
+  _(relu, Relu)              \
+  _(sigmoid, Sigmoid)
+
+#define DECLARE_UNARY_KERNEL(lower, upper)                                                       \
+  cudaError_t launch##upper##Kernel(void *out, const void *input, size_t n, cudaStream_t stream, \
+                                    MyOpsDtype dtype);
+
+FOR_EACH_UNARY_OP(DECLARE_UNARY_KERNEL)
