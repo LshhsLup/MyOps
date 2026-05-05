@@ -23,8 +23,7 @@ void matmul(const at::Tensor &a, const at::Tensor &b, at::Tensor &c) {
   auto stream = at::cuda::getCurrentCUDAStream();
 
   DeviceGuard guard(a);
-  LAUNCH_KERNEL_CHECK(
-      launchMatmulKernel(c.data_ptr(), a.data_ptr(), b.data_ptr(), m, n, k, stream, dtype));
+  launchMatmulKernel(c.data_ptr(), a.data_ptr(), b.data_ptr(), m, n, k, stream, dtype);
 }
 
 }  // namespace torch_api

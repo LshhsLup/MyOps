@@ -4,6 +4,8 @@
 #include "include/common.h"
 #include "include/kernels.h"
 
+namespace myops {
+
 template <typename scalar_t>
 __global__ void matmulKernel(scalar_t *__restrict__ c,
                              const scalar_t *__restrict__ a,
@@ -16,10 +18,10 @@ __global__ void matmulKernel(scalar_t *__restrict__ c,
   if (row_idx < m && col_idx < n) {
     float sum = 0.0f;
     for (int i = 0; i < k; ++i) {
-      sum += FloatConverter<scalar_t>::to_float(a[row_idx * k + i]) *
-             FloatConverter<scalar_t>::to_float(b[i * n + col_idx]);
+      sum += myops::FloatConverter<scalar_t>::to_float(a[row_idx * k + i]) *
+             myops::FloatConverter<scalar_t>::to_float(b[i * n + col_idx]);
     }
-    c[row_idx * n + col_idx] = FloatConverter<scalar_t>::from_float(sum);
+    c[row_idx * n + col_idx] = myops::FloatConverter<scalar_t>::from_float(sum);
   }
 }
 
@@ -44,18 +46,20 @@ cudaError_t launchMatmulKernel(void *c,
                                int n,
                                int k,
                                cudaStream_t stream,
-                               MyOpsDtype dtype) {
+                               myops::MyOpsDtype dtype) {
   switch (dtype) {
-    case MYOPS_DTYPE_FLOAT:
+    case myops::MYOPS_DTYPE_FLOAT:
       return launchMatmulKernelImpl(static_cast<float *>(c), static_cast<const float *>(a),
                                     static_cast<const float *>(b), m, n, k, stream);
-    case MYOPS_DTYPE_HALF:
+    case myops::MYOPS_DTYPE_HALF:
       return launchMatmulKernelImpl(static_cast<__half *>(c), static_cast<const __half *>(a),
                                     static_cast<const __half *>(b), m, n, k, stream);
-    case MYOPS_DTYPE_BFLOAT16:
+    case myops::MYOPS_DTYPE_BFLOAT16:
       return launchMatmulKernelImpl(static_cast<__nv_bfloat16 *>(c),
                                     static_cast<const __nv_bfloat16 *>(a),
                                     static_cast<const __nv_bfloat16 *>(b), m, n, k, stream);
   }
   return cudaErrorInvalidValue;
 }
+
+}  // namespace myops

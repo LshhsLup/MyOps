@@ -211,15 +211,5 @@ inline MyOpsDtype scalarTypeToMyOpsDtype(at::ScalarType dtype) {
   }
 }
 
-// ============================================================================
-// Kernel Launch Check Macro
-// ============================================================================
-
-#define LAUNCH_KERNEL_CHECK(expr)                                                            \
-  do {                                                                                       \
-    cudaError_t err = expr;                                                                  \
-    TORCH_CHECK(err == cudaSuccess, "CUDA kernel launch failed: ", cudaGetErrorString(err)); \
-  } while (0);
-
 }  // namespace torch_api
 }  // namespace myops

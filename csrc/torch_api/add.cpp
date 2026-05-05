@@ -13,8 +13,7 @@ void add(const at::Tensor &a, const at::Tensor &b, at::Tensor &out) {
   auto stream = at::cuda::getCurrentCUDAStream();
 
   DeviceGuard guard(a);
-  LAUNCH_KERNEL_CHECK(
-      launchAddKernel(out.data_ptr(), a.data_ptr(), b.data_ptr(), a.numel(), stream, dtype));
+  launchAddKernel(out.data_ptr(), a.data_ptr(), b.data_ptr(), a.numel(), stream, dtype);
 }
 
 }  // namespace torch_api

@@ -2,6 +2,7 @@
 
 #include "common.h"
 
+namespace myops {
 // add
 cudaError_t launchAddKernel(void *out,
                             const void *a,
@@ -29,8 +30,10 @@ cudaError_t launchMatmulKernel(void *c,
   _(relu, Relu)              \
   _(sigmoid, Sigmoid)
 
-#define DECLARE_UNARY_KERNEL(lower, upper)                                                       \
-  cudaError_t launch##upper##Kernel(void *out, const void *input, size_t n, cudaStream_t stream, \
-                                    MyOpsDtype dtype);
+#define DECLARE_UNARY_KERNEL(lower, upper)                                                \
+  void launch##upper##Kernel(void *out, const void *input, size_t n, cudaStream_t stream, \
+                             MyOpsDtype dtype);
 
 FOR_EACH_UNARY_OP(DECLARE_UNARY_KERNEL)
+
+}  // namespace myops

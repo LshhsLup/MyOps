@@ -4,6 +4,8 @@
 #include "include/common.h"
 #include "include/kernels.h"
 
+namespace myops {
+
 using vec_t = uint4;
 
 template <typename T>
@@ -69,8 +71,8 @@ cudaError_t launchAddKernelImpl(scalar_t *out,
   cudaDeviceGetAttribute(&num_sms, cudaDevAttrMultiProcessorCount, device);
   cudaDeviceGetAttribute(&max_threads_per_sm, cudaDevAttrMaxThreadsPerMultiProcessor, device);
   const int max_warps_per_sm = max_threads_per_sm / 32;
-  const int blocks = num_sms * max_warps_per_sm * 32 / threadsPerBlock;
-  addKernel<scalar_t><<<blocks, threadsPerBlock, 0, stream>>>(out, a, b, n);
+  const int blocks = num_sms * max_warps_per_sm * 32 / myops::threads_per_block();
+  addKernel<scalar_t><<<blocks, myops::threads_per_block(), 0, stream>>>(out, a, b, n);
   return cudaGetLastError();
 }
 
@@ -94,3 +96,5 @@ cudaError_t launchAddKernel(void *out,
   }
   return cudaErrorInvalidValue;
 }
+
+}  // namespace myops

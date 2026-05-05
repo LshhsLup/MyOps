@@ -6,9 +6,7 @@
 namespace myops {
 namespace torch_api {
 
-namespace {
-
-using UnaryKernelFunc = cudaError_t (*)(void *, const void *, size_t, cudaStream_t, MyOpsDtype);
+using UnaryKernelFunc = void (*)(void *, const void *, size_t, cudaStream_t, MyOpsDtype);
 
 UnaryKernelFunc getUnaryKernelFunc(const std::string &name) {
 #define REGISTER_UNARY_KERNEL(lower, upper) {#lower, launch##upper##Kernel},
@@ -24,11 +22,8 @@ void launchUnaryKernel(const at::Tensor &input, at::Tensor &out, const std::stri
   const auto dtype = scalarTypeToMyOpsDtype(input.scalar_type());
   auto stream = at::cuda::getCurrentCUDAStream();
   DeviceGuard guard(input);
-  LAUNCH_KERNEL_CHECK(
-      getUnaryKernelFunc(name)(out.data_ptr(), input.data_ptr(), input.numel(), stream, dtype));
+  getUnaryKernelFunc(name)(out.data_ptr(), input.data_ptr(), input.numel(), stream, dtype);
 }
-
-}  // anonymous namespace
 
 #define DEFINE_UNARY_OP(lower, upper)                                              \
   void lower(const at::Tensor &input, at::Tensor &out) {                           \

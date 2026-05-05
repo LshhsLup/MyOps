@@ -34,7 +34,8 @@ setup(
                 'nvcc': [
                     '-O3',
                     '--use_fast_math',
-                    '-arch=sm_80'
+                    '-arch=sm_80',
+                    '--extended-lambda'
                 ]
             }
         )
