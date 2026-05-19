@@ -3,7 +3,6 @@
 import torch
 
 __all__ = [
-    "add",
     "matmul",
     "abs",
     "neg",
@@ -11,17 +10,30 @@ __all__ = [
     "log",
     "relu",
     "sigmoid",
+    "add",
+    "sub",
+    "mul",
+    "div",
 ]
 
 
-def add(
-    a: torch.Tensor, b: torch.Tensor, out: torch.Tensor | None = None
-) -> torch.Tensor:
-    """Element-wise addition: out = a + b"""
-    if out is None:
-        out = torch.empty_like(a)
-    torch.ops.myops.add(a, b, out)
-    return out
+def _make_binary_op(name: str):
+    def op(
+        a: torch.Tensor, b: torch.Tensor, out: torch.Tensor | None = None
+    ) -> torch.Tensor:
+        if out is None:
+            out = torch.empty_like(a)
+        getattr(torch.ops.myops, name)(a, b, out)
+        return out
+
+    op.__name__ = name
+    return op
+
+
+add = _make_binary_op("add")
+sub = _make_binary_op("sub")
+mul = _make_binary_op("mul")
+div = _make_binary_op("div")
 
 
 def matmul(

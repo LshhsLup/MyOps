@@ -14,17 +14,28 @@ def gen_data_unary(n, dtype, device="cuda"):
     return (torch.randn(n, dtype=dtype, device=device),)
 
 
-OPERATOR_REGISTRY = [
-    {
-        "name": "add",
-        "dtypes": [torch.float32, torch.float16, torch.bfloat16],
-        "shapes": [(10**i,) for i in range(3, 10)],
-        "cuda_func": lambda a, b: myops.cuda.add(a, b),
-        "triton_func": lambda a, b: myops.triton.add(a, b),
-        "torch_func": torch.add,
-        "gen_data": gen_data_elementwise,
-    },
-]
+OPERATOR_REGISTRY = []
+
+# Binary ops config: (torch_func, dtypes, max_shape_exp)
+BINARY_OPS = {
+    "add": (torch.add, [torch.float32, torch.float16, torch.bfloat16], 10),
+    "sub": (torch.sub, [torch.float32, torch.float16, torch.bfloat16], 10),
+    "mul": (torch.mul, [torch.float32, torch.float16, torch.bfloat16], 10),
+    "div": (torch.div, [torch.float32, torch.float16, torch.bfloat16], 10),
+}
+
+for name, (torch_fn, dtypes, max_exp) in BINARY_OPS.items():
+    OPERATOR_REGISTRY.append(
+        {
+            "name": name,
+            "dtypes": dtypes,
+            "shapes": [(10**i,) for i in range(3, max_exp)],
+            "cuda_func": lambda a, b, n=name: getattr(myops.cuda, n)(a, b),
+            "triton_func": lambda a, b, n=name: getattr(myops.triton, n)(a, b),
+            "torch_func": torch_fn,
+            "gen_data": gen_data_elementwise,
+        }
+    )
 
 # Unary ops config: (torch_func, dtypes, max_shape_exp)
 UNARY_OPS = {
