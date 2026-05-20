@@ -4,6 +4,7 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <cstdint>
+#include <cstdio>
 
 // macros defined in pytorch:
 // https://github.com/pytorch/pytorch/blob/main/torch/headeronly/macros/Macros.h
