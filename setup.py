@@ -28,7 +28,6 @@ SUPPORTED_ARCHS = [
 ]
 
 def get_cuda_arch_flags():
-    """生成多架构编译标志"""
     flags = []
     for compute, sm in SUPPORTED_ARCHS:
         flags.append(f'-gencode=arch=compute_{compute},code=sm_{sm}')

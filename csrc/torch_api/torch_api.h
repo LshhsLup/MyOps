@@ -10,6 +10,7 @@ namespace torch_api {
 // ============================================================================
 
 void matmul(const at::Tensor &a, const at::Tensor &b, at::Tensor &c);
+void matrix_transpose(const at::Tensor &input, at::Tensor &out);
 
 // unary ops
 void abs(const at::Tensor &input, at::Tensor &out);

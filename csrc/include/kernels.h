@@ -13,7 +13,7 @@ void launchMatmulKernel(void *c,
                         cudaStream_t stream,
                         MyOpsDtype dtype);
 
-void launchMatTransKernel(void *out, void *in, int rows, int cols, cudaStream_t stream, MyOpsDtype dtype);
+void launchMatTransKernel(void *out, const void *in, int rows, int cols, cudaStream_t stream, MyOpsDtype dtype);
 
 // unary ops - name(lower), Name(upper)
 #define FOR_EACH_UNARY_OP(_) \

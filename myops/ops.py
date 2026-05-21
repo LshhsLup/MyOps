@@ -4,6 +4,7 @@ import torch
 
 __all__ = [
     "matmul",
+    "matrix_transpose",
     "abs",
     "neg",
     "exp",
@@ -44,6 +45,14 @@ def matmul(
         c = torch.empty((a.shape[0], b.shape[1]), dtype=a.dtype, device=a.device)
     torch.ops.myops.matmul(a, b, c)
     return c
+
+
+def matrix_transpose(input: torch.Tensor, out: torch.Tensor | None = None) -> torch.Tensor:
+    """Matrix transpose: out = input.T"""
+    if out is None:
+        out = torch.empty((input.size(1), input.size(0)), dtype=input.dtype, device=input.device)
+    torch.ops.myops.matrix_transpose(input, out)
+    return out
 
 
 def _make_unary_op(name: str):
