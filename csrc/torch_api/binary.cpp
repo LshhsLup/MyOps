@@ -6,8 +6,8 @@
 namespace myops {
 namespace torch_api {
 
-using BinaryKernelFunc = void (*)(void *, const void *, const void *, size_t, cudaStream_t,
-                                  MyOpsDtype);
+using BinaryKernelFunc =
+    void (*)(void *, const void *, const void *, size_t, cudaStream_t, MyOpsDtype);
 
 BinaryKernelFunc getBinaryKernelFunc(const std::string &name) {
 #define REGISTER_BINARY_KERNEL(lower, upper) {#lower, launch##upper##Kernel},
@@ -19,7 +19,9 @@ BinaryKernelFunc getBinaryKernelFunc(const std::string &name) {
   return it->second;
 }
 
-void launchBinaryKernel(const at::Tensor &a, const at::Tensor &b, at::Tensor &out,
+void launchBinaryKernel(const at::Tensor &a,
+                        const at::Tensor &b,
+                        at::Tensor &out,
                         const std::string &name) {
   const auto dtype = scalarTypeToMyOpsDtype(a.scalar_type());
   auto stream = at::cuda::getCurrentCUDAStream();
@@ -27,11 +29,11 @@ void launchBinaryKernel(const at::Tensor &a, const at::Tensor &b, at::Tensor &ou
   getBinaryKernelFunc(name)(out.data_ptr(), a.data_ptr(), b.data_ptr(), a.numel(), stream, dtype);
 }
 
-#define DEFINE_BINARY_OP(lower, upper)                                                    \
-  void lower(const at::Tensor &a, const at::Tensor &b, at::Tensor &out) {                 \
-    checkTensorContiguous(#lower " - all tensors must be contiguous", a, b, out);          \
-    checkTensorSameAttr<TensorAttr::ALL>(a, b, out);                                      \
-    launchBinaryKernel(a, b, out, #lower);                                                 \
+#define DEFINE_BINARY_OP(lower, upper)                                            \
+  void lower(const at::Tensor &a, const at::Tensor &b, at::Tensor &out) {         \
+    checkTensorContiguous(#lower " - all tensors must be contiguous", a, b, out); \
+    checkTensorSameAttr<TensorAttr::ALL>(a, b, out);                              \
+    launchBinaryKernel(a, b, out, #lower);                                        \
   }
 
 FOR_EACH_BINARY_OP(DEFINE_BINARY_OP)

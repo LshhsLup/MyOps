@@ -18,6 +18,7 @@ Read the `.cu` file and determine:
 - **Launch function signature**: what parameters `launchXxxKernel()` takes
 - **Supported dtypes**: look for template types, dtype switches (float/half/bfloat16)
 - **Whether it fits the element-wise framework** (uses `launch_vectorized_kernel` + `TensorArray`) or needs a custom adapter
+- **Whether the `launchXxxKernel` (MyOpsDtype dispatch) function exists**: the user may only provide `__global__` kernel + `launchXxxKernelImpl` template function, without the outer `launchXxxKernel` that switches on `MyOpsDtype` and casts pointers
 
 ### Step 2: Update C++ integration files
 
@@ -54,6 +55,35 @@ Based on the category:
    - Device guard
    - Kernel launch call
    Follow the pattern of `matmul.cpp` for custom ops.
+
+**If the `.cu` file does NOT contain the `launchXxxKernel` (MyOpsDtype dispatch) function**, you must generate it inside the `.cu` file. This function is the C-style entry point declared in `kernels.h` and called by the torch_api adapter. It switches on `MyOpsDtype` and calls the template `launchXxxKernelImpl` with the appropriate cast. Pattern:
+
+```cpp
+void launchOpNameKernel(void *output, const void *input, <other_params>,
+                        cudaStream_t stream, MyOpsDtype dtype) {
+  switch (dtype) {
+    case MYOPS_DTYPE_FLOAT:
+      launchOpNameKernelImpl(static_cast<float *>(output), static_cast<const float *>(input), <other_params>, stream);
+      break;
+    case MYOPS_DTYPE_HALF:
+      launchOpNameKernelImpl(static_cast<__half *>(output), static_cast<const __half *>(input), <other_params>, stream);
+      break;
+    case MYOPS_DTYPE_BFLOAT16:
+      launchOpNameKernelImpl(static_cast<__nv_bfloat16 *>(output), static_cast<const __nv_bfloat16 *>(input), <other_params>, stream);
+      break;
+    default:
+      MYOPS_CHECK_FAILED("Only support float32, bfloat16 and half.");
+  }
+}
+```
+
+Important rules for generating the dispatch function:
+- Must be inside `namespace myops { }`
+- Pointer params use `void*` for output, `const void*` for inputs
+- Scalar/integer params pass through unchanged
+- `cudaStream_t` and `MyOpsDtype` are always the last two params
+- Cast `void*` → `float*/__half*/__nv_bfloat16*` and `const void*` → `const float*/const __half*/const __nv_bfloat16*`
+- If the `Impl` function takes `const void*` instead of typed pointers, adjust casts accordingly
 
 ### Step 3: Update Python API
 
@@ -180,13 +210,18 @@ if __name__ == "__main__":
 
 ### Step 6: Build and verify
 
+#### If use provides the implementation of kernel, then  do the following things：
+
 1. Run `pip install -e .` to rebuild the C++ extension
 2. Run the test: `python -m pytest tests/test_<op_name>.py -v`
 3. If test fails, debug and fix
 4. Report completion with a summary of all files changed/created
 
+#### If use NOT provides the implementation of kernel, then do nothing
+
 ## Important notes
 
+- Do **NOT** provides the implementation of kernel
 - The `registry.py` and `run.py` mechanism is **deprecated** — do NOT update them
 - The `myops/triton/` directory is for Triton reference implementations — do NOT modify unless asked
 - Always follow existing code patterns and naming conventions
@@ -206,5 +241,5 @@ For each new op, verify:
 - [ ] `myops/ops.py` — Python wrapper added + `__all__` updated
 - [ ] `tests/test_<op>.py` — correctness tests written
 - [ ] `benchmark/benchmark_<op>.py` — benchmark script written
-- [ ] Build succeeds: `pip install -e .`
+- [ ] Build succeeds: `pip install -e .` 
 - [ ] Tests pass: `python -m pytest tests/test_<op>.py -v`

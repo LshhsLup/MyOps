@@ -5,6 +5,7 @@ import torch
 __all__ = [
     "matmul",
     "matrix_transpose",
+    "conv1d",
     "abs",
     "neg",
     "exp",
@@ -52,6 +53,16 @@ def matrix_transpose(input: torch.Tensor, out: torch.Tensor | None = None) -> to
     if out is None:
         out = torch.empty((input.size(1), input.size(0)), dtype=input.dtype, device=input.device)
     torch.ops.myops.matrix_transpose(input, out)
+    return out
+
+
+def conv1d(
+    input: torch.Tensor, kernel: torch.Tensor, out: torch.Tensor | None = None
+) -> torch.Tensor:
+    """1D convolution (no padding, stride=1): out[i] = sum(input[i:i+K] * kernel)"""
+    if out is None:
+        out = torch.empty(input.size(0) - kernel.size(0) + 1, dtype=input.dtype, device=input.device)
+    torch.ops.myops.conv1d(input, kernel, out)
     return out
 
 

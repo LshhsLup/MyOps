@@ -8,12 +8,10 @@
 
 namespace myops {
 // Generic unary op functor
-#define DEFINE_UNARY_OP_FUNCTOR(lower, upper) \
-  template <typename T>                       \
-  struct upper##Op {                          \
-    __device__ T operator()(T x) const {      \
-      return UnaryOps<T>::lower(x);           \
-    }                                         \
+#define DEFINE_UNARY_OP_FUNCTOR(lower, upper)                            \
+  template <typename T>                                                  \
+  struct upper##Op {                                                     \
+    __device__ T operator()(T x) const { return UnaryOps<T>::lower(x); } \
   };
 
 FOR_EACH_UNARY_OP(DEFINE_UNARY_OP_FUNCTOR)

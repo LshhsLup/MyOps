@@ -13,7 +13,21 @@ void launchMatmulKernel(void *c,
                         cudaStream_t stream,
                         MyOpsDtype dtype);
 
-void launchMatTransKernel(void *out, const void *in, int rows, int cols, cudaStream_t stream, MyOpsDtype dtype);
+void launchMatTransKernel(void *out,
+                          const void *in,
+                          int rows,
+                          int cols,
+                          cudaStream_t stream,
+                          MyOpsDtype dtype);
+
+// conv1d
+void launchConv1dKernel(void *output,
+                        const void *input,
+                        const void *kernel,
+                        int input_size,
+                        int kernel_size,
+                        cudaStream_t stream,
+                        MyOpsDtype dtype);
 
 // unary ops - name(lower), Name(upper)
 #define FOR_EACH_UNARY_OP(_) \
@@ -37,8 +51,8 @@ FOR_EACH_UNARY_OP(DECLARE_UNARY_KERNEL)
   _(mul, Mul)                 \
   _(div, Div)
 
-#define DECLARE_BINARY_KERNEL(lower, upper)                                               \
-  void launch##upper##Kernel(void *out, const void *a, const void *b, size_t n,           \
+#define DECLARE_BINARY_KERNEL(lower, upper)                                     \
+  void launch##upper##Kernel(void *out, const void *a, const void *b, size_t n, \
                              cudaStream_t stream, MyOpsDtype dtype);
 
 FOR_EACH_BINARY_OP(DECLARE_BINARY_KERNEL)
