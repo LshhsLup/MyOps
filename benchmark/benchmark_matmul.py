@@ -4,8 +4,7 @@ from common import benchmark_kernel
 from myops import matmul
 
 params = [
-    {"M": 128, "N": 128, "K": 128, "dtype": torch.float},
-    {"M": 4096, "N": 1024, "K": 4096, "dtype": torch.float},
+    {"M": 8192, "N": 6144, "K": 4096, "dtype": torch.float},
 ]
 
 def main():
@@ -18,10 +17,10 @@ def main():
         c = torch.empty(M, N, dtype=dtype, device="cuda")
 
         # torch.matmul baseline
-        torch_time = benchmark_kernel(torch.matmul, (a, b), repeats=100)
+        torch_time = benchmark_kernel(torch.matmul, (a, b), repeats=10)
 
         # myops.matmul
-        myops_time = benchmark_kernel(matmul, (a, b, c), repeats=100)
+        myops_time = benchmark_kernel(matmul, (a, b, c), repeats=10)
 
         speedup = torch_time / myops_time if myops_time > 0 else float("inf")
 

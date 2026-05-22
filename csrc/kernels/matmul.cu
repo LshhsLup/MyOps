@@ -34,31 +34,35 @@ __global__ void matmulKernel_v2(scalar_t *__restrict__ c,
                                 const int n,
                                 const int k) {
   constexpr int tile = 16;
-  __shared__ scalar_t sram_a_tile[tile][tile];
-  __shared__ scalar_t sram_b_tile[tile][tile];
+  __shared__ scalar_t smem_a_tile[tile][tile];
+  __shared__ scalar_t smem_b_tile[tile][tile];
   int global_tid_m = blockIdx.x * blockDim.x + threadIdx.x;
   int global_tid_n = blockIdx.y * blockDim.y + threadIdx.y;
   int block_tid_m = threadIdx.x;
   int block_tid_n = threadIdx.y;
   float sum = 0.f;
   for (int i = 0; i < (k + tile - 1) / tile; ++i) {
-    if (block_tid_n + i * tile < k && block_tid_m + i * tile < k) {
-      sram_a_tile[block_tid_m][block_tid_n] = a[global_tid_m * k + i * tile + block_tid_n];
-      sram_b_tile[block_tid_m][block_tid_n] = b[i * tile * n + global_tid_n + block_tid_m * n];
+    if (global_tid_m < m && block_tid_n + i * tile < k) {
+      smem_a_tile[block_tid_m][block_tid_n] = a[global_tid_m * k + i * tile + block_tid_n];
     } else {
-      sram_a_tile[block_tid_m][block_tid_n] = FloatConverter<scalar_t>::from_float(0.f);
-      sram_b_tile[block_tid_m][block_tid_n] = FloatConverter<scalar_t>::from_float(0.f);
+      smem_a_tile[block_tid_m][block_tid_n] = FloatConverter<scalar_t>::from_float(0.f);
+    }
+
+    if (global_tid_n < n && block_tid_m + i * tile < k) {
+      smem_b_tile[block_tid_m][block_tid_n] = b[i * tile * n + global_tid_n + block_tid_m * n];
+    } else {
+      smem_b_tile[block_tid_m][block_tid_n] = FloatConverter<scalar_t>::from_float(0.f);
     }
     __syncthreads();
 #pragma unroll
     for (int j = 0; j < tile; ++j) {
-      sum += FloatConverter<scalar_t>::to_float(sram_a_tile[block_tid_m][j]) *
-             FloatConverter<scalar_t>::to_float(sram_b_tile[j][block_tid_n]);
+      sum += FloatConverter<scalar_t>::to_float(smem_a_tile[block_tid_m][j]) *
+             FloatConverter<scalar_t>::to_float(smem_b_tile[j][block_tid_n]);
     }
+    __syncthreads();
   }
-  __syncthreads();
   if (global_tid_m < m && global_tid_n < n) {
-    c[block_tid_m * n + block_tid_n] = FloatConverter<scalar_t>::from_float(sum);
+    c[global_tid_m * n + global_tid_n] = FloatConverter<scalar_t>::from_float(sum);
   }
 }
 
@@ -72,7 +76,7 @@ void launchMatmulKernelImpl(scalar_t *c,
                             cudaStream_t stream) {
   dim3 threads(16, 16);
   dim3 blocks((m + threads.x - 1) / threads.x, (n + threads.y - 1) / threads.y);
-  matmulKernel_v1<scalar_t>
+  matmulKernel_v2<scalar_t>
       <<<blocks, threads, 16 * 16 * 2 * sizeof(scalar_t), stream>>>(c, a, b, m, n, k);
   MYOPS_CUDA_KERNEL_LAUNCH_CHECK();
 }

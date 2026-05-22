@@ -101,25 +101,25 @@ Create **`tests/test_<op_name>.py`** following this pattern:
 import torch
 import pytest
 from myops import op_name
+from utils import allclose
 
 # Determine reference torch function
 # unary: torch.op_name or torch.nn.functional.op_name
 # binary: torch.op_name
 # custom: implement reference manually
 
-@pytest.mark.parametrize("shape", [
-    (16,), (1024,), (1024 * 1024,),
-    # for 2D ops: (16, 16), (128, 256), etc.
-])
+@pytest.mark.parametrize("param1", [16, 1024, 1024 * 1024])
+@pytest.mark.parametrize("param2", [7, 16, 128])  # one decorator per kernel parameter
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
-def test_op_name_correctness(shape, dtype):
-    # Generate input data
-    input = torch.randn(shape, dtype=dtype, device="cuda")
+def test_op_name_correctness(param1, param2, dtype):
+    # Generate input data based on kernel parameters
+    input = torch.randn(param1, dtype=dtype, device="cuda")
     # For binary ops, also generate second input
 
     result = op_name(input)
     expected = torch_ref_func(input)  # reference implementation
-    assert torch.allclose(result, expected, rtol=1e-3, atol=1e-4)
+    tol = 1e-5 if dtype == torch.float32 else 1e-3
+    assert allclose(result, expected, atol=tol, rtol=tol)
 
 def test_op_name_out_parameter():
     input = torch.randn(1024, dtype=torch.float32, device="cuda")
@@ -137,10 +137,11 @@ if __name__ == "__main__":
 ```
 
 **Key rules for tests**:
-- Use `@pytest.mark.parametrize` for shapes and dtypes
-- Compare against torch reference (e.g., `torch.add`, `torch.abs`, `torch.matmul`)
-- For fp16/bf16, use looser tolerance: `rtol=1e-2, atol=1e-3`
-- For fp32, use `rtol=1e-3, atol=1e-4`
+- Use `@pytest.mark.parametrize` with one decorator per kernel parameter (not combined tuples), e.g. `@pytest.mark.parametrize("M", [...])` then `@pytest.mark.parametrize("N", [...])`
+- If parameters have inter-dependencies (e.g., one must be >= another), add a `pytest.skip(...)` guard at the top of the test function to skip invalid combinations
+- Compare against torch reference (e.g., `torch.add`, `torch.abs`, `torch.matmul`) using `allclose` from `tests/utils.py` (not `torch.allclose`) — it casts to float32 before comparing and prints detailed error analysis on failure
+- For fp16/bf16, use looser tolerance: `tol=1e-3` (both rtol and atol)
+- For fp32, use `tol=1e-5` (both rtol and atol)
 - Test the `out=` parameter path
 - Import from `myops` top-level, not internal modules
 
@@ -210,14 +211,14 @@ if __name__ == "__main__":
 
 ### Step 6: Build and verify
 
-#### If use provides the implementation of kernel, then  do the following things：
+#### If use provides the implementation of kernel, then do the following things：
 
 1. Run `pip install -e .` to rebuild the C++ extension
 2. Run the test: `python -m pytest tests/test_<op_name>.py -v`
 3. If test fails, debug and fix
 4. Report completion with a summary of all files changed/created
 
-#### If use NOT provides the implementation of kernel, then do nothing
+#### If use NOT provides the implementation of kernel, do nothing
 
 ## Important notes
 

@@ -50,9 +50,11 @@ __global__ void conv1dKernel_v2(scalar_t *__restrict__ output,
     for (int j = 0; j < tile; ++j) {
       if (global_tid < output_size && i * tile + j < kernel_size) {
         scalar_t in = input[global_tid + i * tile + j];
-        sum += FloatConverter<scalar_t>::to_float(in) * FloatConverter<scalar_t>::to_float(smem_kernel[j]);
+        sum += FloatConverter<scalar_t>::to_float(in) *
+               FloatConverter<scalar_t>::to_float(smem_kernel[j]);
       }
     }
+    __syncthreads();
   }
   if (global_tid < output_size) {
     output[global_tid] = FloatConverter<scalar_t>::from_float(sum);
@@ -69,7 +71,7 @@ void launchConv1dKernelImpl(scalar_t *output,
   constexpr int threads = threads_per_block();
   int output_size = input_size - kernel_size + 1;
   int blocks = (output_size + threads - 1) / threads;
-  conv1dKernel_v1<scalar_t>
+  conv1dKernel_v2<scalar_t>
       <<<blocks, threads, 0, stream>>>(output, input, kernel, input_size, kernel_size);
   MYOPS_CUDA_KERNEL_LAUNCH_CHECK();
 }

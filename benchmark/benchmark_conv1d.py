@@ -9,13 +9,7 @@ def torch_conv1d_ref(input: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     ).squeeze()
 
 params = [
-    {"input_size": 1024, "kernel_size": 7, "dtype": torch.float32},
-    {"input_size": 1024, "kernel_size": 128, "dtype": torch.float32},
-    {"input_size": 100000, "kernel_size": 256, "dtype": torch.float32},
-    {"input_size": 500000, "kernel_size": 1024, "dtype": torch.float32},
     {"input_size": 1500000, "kernel_size": 2047, "dtype": torch.float32},
-    {"input_size": 1500000, "kernel_size": 2047, "dtype": torch.float16},
-    {"input_size": 1500000, "kernel_size": 2047, "dtype": torch.bfloat16},
 ]
 
 def main():
