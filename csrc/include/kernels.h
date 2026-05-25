@@ -29,6 +29,13 @@ void launchConv1dKernel(void *output,
                         cudaStream_t stream,
                         MyOpsDtype dtype);
 
+// reduce
+void launchReduceSumKernel(void *output,
+                           const void *input,
+                           int N,
+                           cudaStream_t stream,
+                           MyOpsDtype dtype);
+
 // unary ops - name(lower), Name(upper)
 #define FOR_EACH_UNARY_OP(_) \
   _(abs, Abs)                \

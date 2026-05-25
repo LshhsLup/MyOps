@@ -6,6 +6,7 @@ __all__ = [
     "matmul",
     "matrix_transpose",
     "conv1d",
+    "reduce_sum",
     "abs",
     "neg",
     "exp",
@@ -63,6 +64,14 @@ def conv1d(
     if out is None:
         out = torch.empty(input.size(0) - kernel.size(0) + 1, dtype=input.dtype, device=input.device)
     torch.ops.myops.conv1d(input, kernel, out)
+    return out
+
+
+def reduce_sum(input: torch.Tensor, out: torch.Tensor | None = None) -> torch.Tensor:
+    """Sum reduction: out = sum(input)"""
+    if out is None:
+        out = torch.zeros(1, dtype=input.dtype, device=input.device)
+    torch.ops.myops.reduce_sum(input, out)
     return out
 
 

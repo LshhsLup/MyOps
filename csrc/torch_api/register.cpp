@@ -15,6 +15,7 @@ TORCH_LIBRARY_FRAGMENT(myops, m) {
   m.def(TORCH_SELECTIVE_SCHEMA("myops::matrix_transpose(Tensor input, Tensor(a!) out) -> ()"));
   m.def(TORCH_SELECTIVE_SCHEMA(
       "myops::conv1d(Tensor input, Tensor kernel, Tensor(a!) output) -> ()"));
+  m.def(TORCH_SELECTIVE_SCHEMA("myops::reduce_sum(Tensor input, Tensor(a!) out) -> ()"));
   // unary ops
   m.def(TORCH_SELECTIVE_SCHEMA("myops::abs(Tensor input, Tensor(a!) out) -> ()"));
   m.def(TORCH_SELECTIVE_SCHEMA("myops::neg(Tensor input, Tensor(a!) out) -> ()"));
@@ -33,6 +34,7 @@ TORCH_LIBRARY_IMPL(myops, CUDA, m) {
   m.impl(TORCH_SELECTIVE_NAME("myops::matmul"), TORCH_FN(matmul));
   m.impl(TORCH_SELECTIVE_NAME("myops::matrix_transpose"), TORCH_FN(matrix_transpose));
   m.impl(TORCH_SELECTIVE_NAME("myops::conv1d"), TORCH_FN(conv1d));
+  m.impl(TORCH_SELECTIVE_NAME("myops::reduce_sum"), TORCH_FN(reduce_sum));
   // unary ops
   m.impl(TORCH_SELECTIVE_NAME("myops::abs"), TORCH_FN(abs));
   m.impl(TORCH_SELECTIVE_NAME("myops::neg"), TORCH_FN(neg));

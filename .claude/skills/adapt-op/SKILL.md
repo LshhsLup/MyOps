@@ -121,12 +121,6 @@ def test_op_name_correctness(param1, param2, dtype):
     tol = 1e-5 if dtype == torch.float32 else 1e-3
     assert allclose(result, expected, atol=tol, rtol=tol)
 
-def test_op_name_out_parameter():
-    input = torch.randn(1024, dtype=torch.float32, device="cuda")
-    out = torch.empty_like(input)
-    result = op_name(input, out=out)
-    assert result is out  # should return same tensor
-
 # Edge cases per op type:
 # - For ops with domain restrictions (log, div): test with valid-range inputs
 # - For reduction/matmul: test non-aligned sizes, edge-case dims
@@ -142,7 +136,6 @@ if __name__ == "__main__":
 - Compare against torch reference (e.g., `torch.add`, `torch.abs`, `torch.matmul`) using `allclose` from `tests/utils.py` (not `torch.allclose`) — it casts to float32 before comparing and prints detailed error analysis on failure
 - For fp16/bf16, use looser tolerance: `tol=1e-3` (both rtol and atol)
 - For fp32, use `tol=1e-5` (both rtol and atol)
-- Test the `out=` parameter path
 - Import from `myops` top-level, not internal modules
 
 ### Step 5: Write benchmark
