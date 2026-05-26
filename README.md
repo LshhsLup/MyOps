@@ -25,10 +25,45 @@ The fun part of CUDA is writing the kernel. The tedious part is everything else:
 
 ## Installation
 
+### 1. Configure PyTorch Shared Library Path (CRITICAL)
+
+Custom extensions need to link against PyTorch's internal C++ libraries (like libc10.so and libtorch_cpu.so). Ensure your dynamic linker can find them by setting LD_LIBRARY_PATH:
+
 ```bash
-pip install -e .
+# Set for current session
+export LD_LIBRARY_PATH=$(python -c "import torch; import os; print(os.path.join(os.path.dirname(torch.__file__), 'lib'))"):$LD_LIBRARY_PATH
+
+# (Optional) Persist to ~/.bashrc so you don't have to re-run it in new shells
+echo "export LD_LIBRARY_PATH=\$(python -c \"import torch; import os; print(os.path.join(os.path.dirname(torch.__file__), 'lib'))\"): \$LD_LIBRARY_PATH" >> ~/.bashrc
+source ~/.bashrc
 ```
 
+### 2. Install in Editable Mode
+Choose Method A for a standard editable pip mapping, or Method B for standalone local kernel hacking without tool interference.
+
+#### Method A: Standard Editable Install (via pip/uv)
+
+Forces the manager to skip the empty environment sandbox and compile in your real system context:
+```bash
+# Using standard pip
+python -m pip install -e . --no-build-isolation
+
+# Using fast modern 'uv' (requires system flag if outside venv)
+uv pip install -e . --system
+```
+
+#### Method B: Local In-Place Compilation (Best for High-Frequency Kernel Dev)
+Bypasses front-end managers completely. Compiles .cu files via Ninja/NVCC and outputs the binary _core.so directly into the myops/ source folder:
+
+```bash
+python setup.py build_ext --inplace
+```
+
+### 3. Verify Installation
+
+```bash
+python -c "import myops; print('MyOps initialized successfully! Core extension:', myops._core)"
+```
 This compiles all CUDA kernels with `-O3 --use_fast_math --extended-lambda` and installs the `myops` package in editable mode.
 
 ## Usage

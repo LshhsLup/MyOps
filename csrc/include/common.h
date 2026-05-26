@@ -84,7 +84,17 @@ constexpr uint32_t CUDA_THREADS_PER_BLOCK_FALLBACK = 256;
 namespace myops {
 
 constexpr uint32_t threads_per_block() {
-  return WARP_SIZE * 4;
+  return WARP_SIZE * 8;
+}
+
+inline int get_sm_count() {
+  static int sm_count = 0;
+  if (sm_count == 0) {
+    int device;
+    cudaGetDevice(&device);
+    cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, device);
+  }
+  return sm_count;
 }
 
 enum MyOpsDtype { MYOPS_DTYPE_FLOAT, MYOPS_DTYPE_HALF, MYOPS_DTYPE_BFLOAT16 };

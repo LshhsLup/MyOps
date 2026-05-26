@@ -29,8 +29,8 @@ def main():
             "input_size": input_size,
             "kernel_size": kernel_size,
             "dtype": dtype,
-            "torch_ms": torch_time,
-            "myops_ms": myops_time,
+            "torch_us": torch_time,
+            "myops_us": myops_time,
             "speedup": speedup,
         })
 
@@ -39,7 +39,7 @@ def main():
         dtype_str = str(r["dtype"]).split(".")[-1]
         table_data.append([
             r["input_size"], r["kernel_size"], dtype_str,
-            f"{r['torch_ms']:.3f}", f"{r['myops_ms']:.3f}",
+            f"{r['torch_us']:.3f}", f"{r['myops_us']:.3f}",
             f"{r['speedup']:.2f}x",
         ])
 

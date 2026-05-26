@@ -11,4 +11,4 @@ def benchmark_kernel(func, inputs, repeats=1):
         func(*inputs)
     end_evt.record()
     torch.cuda.synchronize()
-    return start_evt.elapsed_time(end_evt) / repeats
+    return start_evt.elapsed_time(end_evt) / repeats * 1000
